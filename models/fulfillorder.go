@@ -46,6 +46,7 @@ type Order struct {
 	EmailAddress      string  `required:"true" description:"Email address of the customer"`
 	PreferredLanguage string  `required:"false" description:"Preferred Language of the customer"`
 	Product           string  `required:"false" description:"Product ordered by the customer"`
+	Partition         string  `required:"false" description:"MongoDB Partition. Generated."`
 	Total             float64 `required:"false" description:"Order total"`
 	Source            string  `required:"false" description:"Source channel e.g. App Service, Container instance, K8 cluster etc"`
 	Status            string  `required:"true" description:"Order Status"`
@@ -204,7 +205,7 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	// Track the event for the challenge purposes
 	eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder: - Team Name " + teamname + " db " + db)
 	eventTelemetry.Properties["team"] = teamname
-	eventTelemetry.Properties["challenge"] = "fulfillorder"
+	eventTelemetry.Properties["challenge"] = "4-fulfillorder"
 	eventTelemetry.Properties["type"] = db
 	challengeTelemetryClient.Track(eventTelemetry)
 	
@@ -228,7 +229,7 @@ func check(e error) {
 		// Track the event for the challenge purposes
 		eventTelemetry := appinsights.NewEventTelemetry("ProcessOrder: - Team Name " + teamname + " db " + db)
 		eventTelemetry.Properties["team"] = teamname
-		eventTelemetry.Properties["challenge"] = "processorder"
+		eventTelemetry.Properties["challenge"] = "5-fileshare"
 		eventTelemetry.Properties["type"] = db
 		challengeTelemetryClient.Track(eventTelemetry)
 	}
