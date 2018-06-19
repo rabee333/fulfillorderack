@@ -7,14 +7,14 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
 
 	"github.com/Microsoft/ApplicationInsights-Go/appinsights"
+	"gopkg.in/matryer/try.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/matryer/try.v1"
 )
 
 var (
@@ -25,7 +25,8 @@ var (
 
 var db string
 
-var insightskey = "23c6b1ec-ca92-4083-86b6-eba851af9032"
+var customInsightsKey = os.Getenv("APPINSIGHTS_KEY")
+var challengeInsightsKey = os.Getenv("CHALLENGEAPPINSIGHTS_KEY")
 var mongoURL = os.Getenv("MONGOURL")
 var teamname = os.Getenv("TEAMNAME")
 var isCosmosDb = strings.Contains(mongoURL, "documents.azure.com")
@@ -37,8 +38,9 @@ var mongoDBSession *mgo.Session
 var mongoDBSessionError error
 var mongoPoolLimit = 25
 
-
+// Application Insights telemetry clients
 var challengeTelemetryClient appinsights.TelemetryClient
+var customTelemetryClient appinsights.TelemetryClient
 
 // Order represents the order json
 type Order struct {
@@ -55,8 +57,8 @@ type Order struct {
 func init() {
 
 	// Init App Insights
-	challengeTelemetryClient = appinsights.NewTelemetryClient(insightskey)
-
+	challengeTelemetryClient = appinsights.NewTelemetryClient(challengeInsightsKey)
+	challengeTelemetryClient.Context().Tags.Cloud().SetRole("fulfillorder_golang")
 	// Let's validate and spool the ENV VARS
 
 	if len(os.Getenv("MONGOURL")) == 0 {
@@ -71,19 +73,34 @@ func init() {
 		log.Print("The environment variable TEAMNAME is " + os.Getenv("TEAMNAME"))
 	}
 
+	if len(os.Getenv("CHALLENGEAPPINSIGHTS_KEY")) == 0 {
+		log.Print("The environment variable CHALLENGEAPPINSIGHTS_KEY has not been set")
+	} else {
+		log.Print("The environment variable CHALLENGEAPPINSIGHTS_KEY is " + os.Getenv("CHALLENGEAPPINSIGHTS_KEY"))
+	}
+
+	if customInsightsKey != "" {
+		customTelemetryClient = appinsights.NewTelemetryClient(customInsightsKey)
+
+		// Set role instance name globally -- this is usually the
+		// name of the service submitting the telemetry
+		customTelemetryClient.Context().Tags.Cloud().SetRole("fulfillorder_golang")
+	}
+
 	var mongoPoolLimitEnv = os.Getenv("MONGOPOOL_LIMIT")
 	if mongoPoolLimitEnv != "" {
 		if limit, err := strconv.Atoi(mongoPoolLimitEnv); err == nil {
 			mongoPoolLimit = limit
 		}
 	}
-	log.Printf("MongoDB pool limit set to %v. You can override by setting the MONGOPOOL_LIMIT environment variable." , mongoPoolLimit)
-	
-
+	log.Printf("MongoDB pool limit set to %v. You can override by setting the MONGOPOOL_LIMIT environment variable.", mongoPoolLimit)
 
 	url, err := url.Parse(mongoURL)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Problem parsing Mongo URL %s: ",url), err)
+		log.Fatal(fmt.Sprintf("Problem parsing Mongo URL %s: ", url), err)
+		if customTelemetryClient != nil {
+			customTelemetryClient.TrackException(err)
+		}
 	}
 
 	if isCosmosDb {
@@ -99,7 +116,7 @@ func init() {
 	var dialInfo *mgo.DialInfo
 	mongoUsername := ""
 	mongoPassword := ""
-	if url.User!=nil {
+	if url.User != nil {
 		mongoUsername = url.User.Username()
 		mongoPassword, _ = url.User.Password()
 	}
@@ -183,24 +200,23 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 		// Try updating the record, with retry logic
 		err := try.Do(func(attempt int) (bool, error) {
 			var err error
-		
+
 			err = mongoDBCollection.Update(result, change)
-	
+
 			if err != nil {
 				log.Println("Error processingrecord. Will retry in 3 seconds:", err)
-				  time.Sleep(3 * time.Second) // wait
+				time.Sleep(3 * time.Second) // wait
 			} else {
 				log.Println("set status: Processed")
 			}
 			return attempt < 3, err
-		  })
-		  
+		})
+
 		if err != nil {
 			log.Println("Error updating record after retrying 3 times: ", err)
 			return
 		}
 	}
-
 
 	// Track the event for the challenge purposes
 	eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder: - Team Name " + teamname + " db " + db)
@@ -208,7 +224,6 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	eventTelemetry.Properties["challenge"] = "4-fulfillorder"
 	eventTelemetry.Properties["type"] = db
 	challengeTelemetryClient.Track(eventTelemetry)
-	
 
 	// Let's place on the file system
 	f, err := os.Create("/orders/" + order.OrderID + ".json")

@@ -9,6 +9,8 @@ The following environment variables need to be passed to the container:
 ### ACK Logging
 ```
 ENV TEAMNAME=[YourTeamName]
+ENV APPINSIGHTS_KEY=[YourCustomApplicationInsightsKey] # Optional, create your own App Insights resource
+ENV CHALLENGEAPPINSIGHTS_KEY=[Challenge Application Insights Key] # Given by the proctors
 ```
 
 ### For Mongo
