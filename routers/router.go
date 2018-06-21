@@ -11,6 +11,7 @@ import (
 	"fulfillorderack/controllers"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/context"
 )
 
 func init() {
@@ -20,11 +21,9 @@ func init() {
 				&controllers.OrderController{},
 			),
 		),
-		beego.NSNamespace("/healthz",
-			beego.NSInclude(
-				&controllers.HealthController{},
-			),
-		),
 	)
 	beego.AddNamespace(ns)
+	beego.Get("/healthz", func(ctx *context.Context) {
+		ctx.Output.Body([]byte("i'm alive!"))
+	})
 }
