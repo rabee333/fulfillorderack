@@ -98,10 +98,7 @@ func init() {
 	url, err := url.Parse(mongoURL)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Problem parsing Mongo URL %s: ", url), err)
-		challengeTelemetryClient.TrackException(err)
-		if customTelemetryClient != nil {
-			customTelemetryClient.TrackException(err)
-		}
+		trackException(err)
 	}
 
 	if isCosmosDb {
@@ -156,10 +153,7 @@ func init() {
 	mongoDBSession, mongoDBSessionError = mgo.DialWithInfo(dialInfo)
 	if mongoDBSessionError != nil {
 		log.Fatal(fmt.Sprintf("Can't connect to mongo at [%s], go error: ", mongoURL), mongoDBSessionError)
-		challengeTelemetryClient.TrackException(mongoDBSessionError)
-		if customTelemetryClient != nil {
-			customTelemetryClient.TrackException(mongoDBSessionError)
-		}
+		trackException(mongoDBSessionError)
 	} else {
 		success = true
 	}
@@ -210,6 +204,7 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 
 			if err != nil {
 				log.Println("Error processing record. Will retry in 3 seconds:", err)
+				trackException(err)
 				time.Sleep(3 * time.Second) // wait
 			} else {
 				log.Println("set status: Processed")
@@ -236,20 +231,30 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	}
 	// Let's place on the file system
 	f, err := os.Create("/orders/" + order.OrderID + ".json")
-	check(err, order.OrderID)
+	trackException(err)
 
 	fmt.Fprintf(f, "{", "orderid:", order.OrderID, ",", "status:", "Processed", "}")
 
 	// Issue a `Sync` to flush writes to stable storage.
-	f.Sync()
-
+	err = f.Sync()
+	check(err, order.OrderID)
 	return order.OrderID
+}
+
+func trackException(err error) {
+	if err != nil {
+		log.Println(err)
+		challengeTelemetryClient.TrackException(err)
+		if customTelemetryClient != nil {
+			customTelemetryClient.TrackException(err)
+		}
+	}
 }
 
 func check(e error, orderId string) {
 	if e != nil {
-		log.Println("order volume not mounted")
-		challengeTelemetryClient.TrackException(e)
+		log.Println(e)
+		trackException(e)
 	} else {
 		// Track the event for the challenge purposes
 		eventTelemetry := appinsights.NewEventTelemetry("ProcessOrder: - Team Name " + teamname + " db " + db)
