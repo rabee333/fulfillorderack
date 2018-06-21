@@ -223,6 +223,7 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	eventTelemetry.Properties["team"] = teamname
 	eventTelemetry.Properties["challenge"] = "4-fulfillorder"
 	eventTelemetry.Properties["type"] = db
+	eventTelemetry.Properties["service"] = "FulfillOrder"
 	challengeTelemetryClient.Track(eventTelemetry)
 
 	// Let's place on the file system
@@ -246,6 +247,7 @@ func check(e error) {
 		eventTelemetry.Properties["team"] = teamname
 		eventTelemetry.Properties["challenge"] = "5-fileshare"
 		eventTelemetry.Properties["type"] = db
+		eventTelemetry.Properties["service"] = "FulfillOrder"
 		challengeTelemetryClient.Track(eventTelemetry)
 	}
 }
