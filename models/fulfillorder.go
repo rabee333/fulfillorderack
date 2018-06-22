@@ -221,7 +221,7 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	// Track the event for the challenge purposes
 	eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder: - Team Name " + teamname + " db " + db)
 	eventTelemetry.Properties["team"] = teamname
-	eventTelemetry.Properties["orderId"] = orderId
+	eventTelemetry.Properties["orderId"] = order.OrderID
 	eventTelemetry.Properties["challenge"] = "4-fulfillorder"
 	eventTelemetry.Properties["type"] = db
 	eventTelemetry.Properties["service"] = "FulfillOrder"
