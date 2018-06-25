@@ -219,10 +219,10 @@ func ProcessOrderInMongoDB(order Order) (orderId string) {
 	}
 
 	// Track the event for the challenge purposes
-	eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder: - Team Name " + teamname + " db " + db)
+	eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder db " + db)
 	eventTelemetry.Properties["team"] = teamname
 	eventTelemetry.Properties["orderId"] = order.OrderID
-	eventTelemetry.Properties["challenge"] = "4-fulfillorder"
+	eventTelemetry.Properties["sequence"] = "4"
 	eventTelemetry.Properties["type"] = db
 	eventTelemetry.Properties["service"] = "FulfillOrder"
 	challengeTelemetryClient.Track(eventTelemetry)
@@ -257,11 +257,11 @@ func check(e error, orderId string) {
 		trackException(e)
 	} else {
 		// Track the event for the challenge purposes
-		eventTelemetry := appinsights.NewEventTelemetry("ProcessOrder: - Team Name " + teamname + " db " + db)
+		eventTelemetry := appinsights.NewEventTelemetry("FulfillOrder fileshare")
 		eventTelemetry.Properties["team"] = teamname
-		eventTelemetry.Properties["challenge"] = "5-fileshare"
+		eventTelemetry.Properties["sequence"] = "5"
 		eventTelemetry.Properties["orderId"] = orderId
-		eventTelemetry.Properties["type"] = db
+		eventTelemetry.Properties["type"] = "fileshare"
 		eventTelemetry.Properties["service"] = "FulfillOrder"
 		challengeTelemetryClient.Track(eventTelemetry)
 		if customTelemetryClient != nil {
