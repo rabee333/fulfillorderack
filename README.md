@@ -22,3 +22,5 @@ ENV MONGOURL="mongodb://[mongoinstance].[namespace]"
 ```
 /orders
 ```
+
+Bye!
