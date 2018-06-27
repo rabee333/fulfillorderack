@@ -39,6 +39,8 @@ spec:
             secretKeyRef:
               name: kuberneteschallenge2
               key: mongodb
+      imagePullSecrets:
+      - name: cred
 ---
 apiVersion: v1
 kind: Service
